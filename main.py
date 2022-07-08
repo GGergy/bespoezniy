@@ -1,5 +1,4 @@
 import random
-
 import discord
 import os
 from discord.ext import commands
@@ -37,7 +36,7 @@ async def on_message(message):
     if 'путин' in message.content.lower():
         await message.channel.send('Россия священная наша держава')
         await message.channel.send('Россия великая наша страна')
-    if '%info' in message.content.lower():
+    elif '%info' in message.content.lower():
         await message.channel.send('я могу присылать анекдоты, запоминать анекдоты, писать треки шадоврейза(и не только), и еще я тайный агент Кремля')
     elif 'россия' in message.content.lower():
         await message.channel.send('Владимир Владимирович Путин - президент мира')
@@ -51,7 +50,7 @@ async def on_message(message):
                     del data[data.index(el)]
             await message.channel.send(random.choice(data))
             print(data)
-    if '%запоминай анек:' in message.content.lower():
+    elif '%запоминай анек:' in message.content.lower():
         with open('aneks.txt', 'r') as file:
             data = file.read().split('\naboba\n')
         with open('aneks.txt', mode='a') as file:
@@ -61,10 +60,11 @@ async def on_message(message):
                 await message.channel.send('запомнил')
             else:
                 await message.channel.send('уже знаю')
-    if '%дай текст песни:' in message.content.lower():
+    elif '%дай текст песни:' in message.content.lower():
         msg = message.content.lower().split()
         if not os.path.isfile(msg[3] + '.txt'):
-            await message.channel.send('разраб такого не знает')
+            autors = ('shadowraze')
+            await message.channel.send(f'разраб такого не знает, доступные авторы - {autors}')
         else:
             with open(msg[3] + '.txt', 'r', encoding='utf-8') as file:
                 data = file.read().split('\naboba')
@@ -81,10 +81,10 @@ async def on_message(message):
                         await message.channel.send(f'у нас только {len(data)} песен')
                 else:
                     await message.channel.send(random.choice(data))
-    if bad(message.content.lower().split()):
+    elif bad(message.content.lower().split()):
         w = bad(message.content.lower().split())
         await message.channel.send(f'{message.author}, сам {w}')
-    if '%добавить плохое слово:' in message.content.lower():
+    elif '%добавить плохое слово:' in message.content.lower():
         msg = message.content.split()
         with open('bad_words.txt', 'r') as file:
             data = file.read().split()
@@ -96,6 +96,19 @@ async def on_message(message):
                 await message.channel.send('запомнил')
             else:
                 await message.channel.send('уже знаю')
+    elif '%commands' in message.content.lower():
+        await message.channel.send('%info - информация\n%бот анекдот - рандомный анекдот\n%запоминай анек: {текст} - бот запомнит анекдот\n'
+                                   '%дай текст песни: {автор} {номер} - пишет текст выбранной песни\n%добавить плохое слово: {слово} - запоминает плохое слово и ругает за его использование')
+    elif '%русская рулетка' in message.content.lower():
+        msg = message.content.split()
+        rnd = random.randint(1, 6)
+        print(msg[2], rnd)
+        if rnd == int(msg[2]):
+            print('opop')
+            await message.author.ban(reason='вы проиграли')
+            await message.channel.send(f'{message.author} застрелился')
+        else:
+            await message.channel.send(f'{message.author} стрелял, но не попал')
 
 
 client.run(TOKEN)
