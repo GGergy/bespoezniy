@@ -1,14 +1,11 @@
 import discord
 from discord.ext import commands
-
-
-TOKEN = 'OTk0NTA3ODY4OTUyODcwOTIy.GgTBOS.SaVgYfMQITaCVbUnvyxxKuT3Rh3Fbgfv-z6sBs'
+from config import TOKEN
 
 
 client = discord.Client()
 bot = commands.Bot(command_prefix='%')
 aneks = '- Завтрак съешь сам, обед подели с другом, ужин отдай врагу.\n- Товарищ генерал, а можно я буду вашим врагом?\n- Можно! Расстрелять!!'
-
 
 
 @client.event
@@ -26,6 +23,6 @@ async def on_message(message):
     elif 'анек' in message.content.lower() and 'бот' in message.content.lower():
         await message.channel.send(aneks)
 
+
 client.run(TOKEN)
 bot.run(TOKEN)
-
