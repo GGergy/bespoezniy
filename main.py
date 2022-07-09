@@ -3,6 +3,7 @@ import discord
 import requests
 from bs4 import BeautifulSoup
 import os
+import json
 from discord.ext import commands
 from config import TOKEN
 
@@ -128,8 +129,7 @@ async def on_message(message):
             await message.channel.send('ссылка не открывается')
             return None
         url2 = page.text
-        url2 = url2[url2.find('"url"') + 7:url2.find('"featured_artists"') - 2]
-        print(url2[url2.find('"url"') + 7:url2.find('"featured_artists"') - 2])
+        url2 = json.loads(url2)["response"]["sections"][1]["hits"][0]["result"]["url"]
         page2 = requests.get(url2)
         soup = BeautifulSoup(page2.text, "html.parser")
         res = soup.select_one("#lyrics-root > div.Lyrics__Container-sc-1ynbvzw-6.YYrds")
