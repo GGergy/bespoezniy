@@ -1,5 +1,7 @@
 import random
 import discord
+import requests
+from bs4 import BeautifulSoup
 import os
 from discord.ext import commands
 from config import TOKEN
@@ -99,16 +101,40 @@ async def on_message(message):
     elif '%commands' in message.content.lower():
         await message.channel.send('%info - информация\n%бот анекдот - рандомный анекдот\n%запоминай анек: {текст} - бот запомнит анекдот\n'
                                    '%дай текст песни: {автор} {номер} - пишет текст выбранной песни\n%добавить плохое слово: {слово} - запоминает плохое слово и ругает за его использование')
+    elif '%брось кубик' in message.content.lower():
+        msg = message.content.split()
+        try:
+            rd = random.randint(int(msg[2]), int(msg[3]))
+            await message.channel.send(f'выпало {rd}')
+        except:
+            await message.channel.send(f'{message.author}, ты ебанутый?')
+
     elif '%русская рулетка' in message.content.lower():
         msg = message.content.split()
         rnd = random.randint(1, 6)
-        print(msg[2], rnd)
+        if not 0 < int(msg[2]) < 6:
+            await message.channel.send(f'{message.author} застрелян за читерство')
+            return None
         if rnd == int(msg[2]):
-            print('opop')
-            await message.author.ban(reason='вы проиграли')
             await message.channel.send(f'{message.author} застрелился')
         else:
-            await message.channel.send(f'{message.author} стрелял, но не попал')
+            await message.channel.send(f'{message.author} стрелял, но не попал. Выпало {rnd}')
+    elif '%искать на genius:' in message.content.lower():
+        msg = message.content.split()
+        url = f'https://genius.com/api/search/multi?per_page=5&q={"%20".join(msg[3:])}'
+        try:
+            page = requests.get(url)
+        except:
+            await message.channel.send('ссылка не открывается')
+            return None
+        url2 = page.text
+        url2 = url2[url2.find('"url"') + 7:url2.find('"featured_artists"') - 2]
+        print(url2[url2.find('"url"') + 7:url2.find('"featured_artists"') - 2])
+        page2 = requests.get(url2)
+        soup = BeautifulSoup(page2.text, "html.parser")
+        res = soup.select_one("#lyrics-root > div.Lyrics__Container-sc-1ynbvzw-6.YYrds")
+        print(res)
+        await message.channel.send("```" + res.get_text("\n") + "```")
 
 
 client.run(TOKEN)
