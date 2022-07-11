@@ -68,7 +68,7 @@ async def текст(ctx, *args):
     soup = BeautifulSoup(page2.text, "html.parser")
     res = soup.select_one("#lyrics-root > div.Lyrics__Container-sc-1ynbvzw-6.YYrds")
     autor = soup.select_one(".SongHeaderdesktop__Artist-sc-1effuo1-11")
-    embed = discord.Embed(title="Sample Embed", url="https://realdrewdata.medium.com/", description="```" + autor.get_text() + "\n" + res.get_text("\n") + "```", color=0xa35de0)
+    embed = discord.Embed(title=f"текст вашей песни:", url="https://realdrewdata.medium.com/", description="```" + autor.get_text() + "\n" + res.get_text("\n") + "```", color=0xa35de0)
     await ctx.send(embed=embed)
 
 
@@ -82,18 +82,23 @@ async def брось_кубик(ctx, *args):
 
 
 @client.command(pass_context=True)
-async def играть(ctx, *arg):
+async def play(ctx, *arg):
     global vc
+    try:
+        with YoutubeDL(YDL_OPTIONS) as ydl:
+            info = ydl.extract_info(f"ytsearch:{' '.join(arg)}", download=False)['entries'][0]
+        url = info['formats'][0]['url']
+    except:
+        await ctx.send('ничего не найдено')
+        return None
     try:
         vc = await ctx.message.author.voice.channel.connect()
     except:
         server = ctx.message.guild
         voice_channel = server.voice_client
         voice_channel.stop()
-    with YoutubeDL(YDL_OPTIONS) as ydl:
-        info = ydl.extract_info(f"ytsearch:{' '.join(arg)}", download=False)['entries'][0]
-    url = info['formats'][0]['url']
     vc.play(discord.FFmpegPCMAudio(executable="bin\\ffmpeg.exe", source=url, **FFMPEG_OPTIONS))
+    await текст(ctx, ' '.join(arg))
 
 
 @client.command()
