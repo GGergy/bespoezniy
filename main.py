@@ -5,8 +5,7 @@ from bs4 import BeautifulSoup
 import json
 from discord.ext import commands
 from config import TOKEN
-import re
-import dpath.util
+
 from youtube_dl import YoutubeDL
 
 vc = None
@@ -15,32 +14,7 @@ YDL_OPTIONS = {'format': 'worstaudio/best', 'noplaylist': 'False', 'simulate': '
                'preferredquality': '192', 'preferredcodec': 'mp3', 'key': 'FFmpegExtractAudio'}
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 client = commands.Bot(command_prefix='GG ')
-USER_AGENT = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:45.0) Gecko/20100101 Firefox/45.0'
-PATTERNS = [
-    re.compile(r'window\["ytInitialData"\] = (\{.+?\});'),
-    re.compile(r'var ytInitialData = (\{.+?\});'),
-]
-session = requests.Session()
-session.headers['User-Agent'] = USER_AGENT
 
-
-def get_ytInitialData(url: str):
-    rs = session.get(url)
-
-    for pattern in PATTERNS:
-        m = pattern.search(rs.text)
-        if m:
-            data_str = m.group(1)
-            return json.loads(data_str)
-
-
-def search_youtube(text_or_url: str):
-    url = text_or_url
-    data = get_ytInitialData(url)
-    videos = dpath.util.values(data, '**/videoRenderer')
-    if not videos:
-        videos = dpath.util.values(data, '**/playlistVideoRenderer')
-    return 'https://www.youtube.com/watch?v=' + videos[0]['videoId']
 
 
 @client.command()
@@ -110,8 +84,6 @@ async def брось_кубик(ctx, *args):
 @client.command(pass_context=True)
 async def играть(ctx, *arg):
     global vc
-    url = f'https://www.youtube.com/results?search_query={"+".join(arg)}'
-    video_url = search_youtube(url)
     try:
         vc = await ctx.message.author.voice.channel.connect()
     except:
@@ -119,10 +91,7 @@ async def играть(ctx, *arg):
         voice_channel = server.voice_client
         voice_channel.stop()
     with YoutubeDL(YDL_OPTIONS) as ydl:
-        if 'https://' in video_url:
-            info = ydl.extract_info(video_url, download=False)
-        else:
-            info = ydl.extract_info(f"ytsearch:{video_url}", download=False)['entries'][0]
+        info = ydl.extract_info(f"ytsearch:{' '.join(arg)}", download=False)['entries'][0]
     url = info['formats'][0]['url']
     vc.play(discord.FFmpegPCMAudio(executable="bin\\ffmpeg.exe", source=url, **FFMPEG_OPTIONS))
 
@@ -147,5 +116,10 @@ async def resume(ctx):
     voice_channel = server.voice_client
     voice_channel.resume()
 
+
+@client.command()
+async def leave(ctx):
+    voice_client = ctx.message.guild.voice_client
+    await voice_client.disconnect()
 
 client.run(TOKEN)
