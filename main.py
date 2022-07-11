@@ -9,6 +9,7 @@ import re
 import dpath.util
 from youtube_dl import YoutubeDL
 
+vc = None
 
 YDL_OPTIONS = {'format': 'worstaudio/best', 'noplaylist': 'False', 'simulate': 'True',
                'preferredquality': '192', 'preferredcodec': 'mp3', 'key': 'FFmpegExtractAudio'}
@@ -79,7 +80,7 @@ async def русская_рулетка(ctx, *args):
 
 
 @client.command(pass_context=True)
-async def искать(ctx, *args):
+async def текст(ctx, *args):
     url = f'https://genius.com/api/search/multi?per_page=5&q={"%20".join(args)}'
     page = requests.get(url)
     url2 = page.text
@@ -107,10 +108,16 @@ async def брось_кубик(ctx, *args):
 
 
 @client.command(pass_context=True)
-async def play(ctx, *arg):
+async def играть(ctx, *arg):
+    global vc
     url = f'https://www.youtube.com/results?search_query={"+".join(arg)}'
     video_url = search_youtube(url)
-    vc = await ctx.message.author.voice.channel.connect()
+    try:
+        vc = await ctx.message.author.voice.channel.connect()
+    except:
+        server = ctx.message.guild
+        voice_channel = server.voice_client
+        voice_channel.stop()
     with YoutubeDL(YDL_OPTIONS) as ydl:
         if 'https://' in video_url:
             info = ydl.extract_info(video_url, download=False)
@@ -132,6 +139,13 @@ async def pause(ctx):
     server = ctx.message.guild
     voice_channel = server.voice_client
     voice_channel.pause()
+
+
+@client.command()
+async def resume(ctx):
+    server = ctx.message.guild
+    voice_channel = server.voice_client
+    voice_channel.resume()
 
 
 client.run(TOKEN)
