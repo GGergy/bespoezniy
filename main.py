@@ -3,17 +3,40 @@ import discord
 import requests
 from bs4 import BeautifulSoup
 import json
+from time import sleep
 from discord.ext import commands
 from config import TOKEN
-
+from threading import Thread
+from timeit import default_timer
 from youtube_dl import YoutubeDL
 
 vc = None
-
+qe = []
+lenght = 0
+zero = 0
 YDL_OPTIONS = {'format': 'worstaudio/best', 'noplaylist': 'False', 'simulate': 'True',
                'preferredquality': '192', 'preferredcodec': 'mp3', 'key': 'FFmpegExtractAudio'}
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 client = commands.Bot(command_prefix='GG ')
+
+
+def wait(ctx, arg, tme=False):
+    global lenght, zero, vc
+    if tme:
+        print(lenght - tme)
+        sleep(lenght - tme)
+    print(12)
+    if arg[-1] == 'txt:true':
+        src = ' '.join(arg[:-1])
+        text(ctx, src)
+    else:
+        src = ' '.join(arg)
+    with YoutubeDL(YDL_OPTIONS) as ydl:
+        info = ydl.extract_info(f"ytsearch:{src}", download=False)['entries'][0]
+    url = info['formats'][0]['url']
+    lenght = info['duration']
+    vc.play(discord.FFmpegPCMAudio(executable="bin\\ffmpeg.exe", source=url, **FFMPEG_OPTIONS))
+    zero = default_timer()
 
 
 
@@ -54,14 +77,14 @@ async def русская_рулетка(ctx, *args):
 
 
 @client.command(pass_context=True)
-async def текст(ctx, *args):
+async def text(ctx, *args):
     url = f'https://genius.com/api/search/multi?per_page=5&q={"%20".join(args)}'
     page = requests.get(url)
     url2 = page.text
     try:
         url2 = json.loads(url2)["response"]["sections"][1]["hits"][0]["result"]["url"]
     except:
-        await ctx.send("по этому запросу ничего не найдено")
+        await ctx.send("не найдено текста по этому запросу")
         return None
     print(url2)
     page2 = requests.get(url2)
@@ -82,23 +105,23 @@ async def брось_кубик(ctx, *args):
 
 
 @client.command(pass_context=True)
-async def play(ctx, *arg):
-    global vc
-    try:
-        with YoutubeDL(YDL_OPTIONS) as ydl:
-            info = ydl.extract_info(f"ytsearch:{' '.join(arg)}", download=False)['entries'][0]
-        url = info['formats'][0]['url']
-    except:
-        await ctx.send('ничего не найдено')
-        return None
+async def play(ctx, *arg, end=False, tm=False):
+    global vc, qe
+    if end:
+        qe.append(arg)
+    else:
+        qe.insert(0, arg)
+    print(arg)
     try:
         vc = await ctx.message.author.voice.channel.connect()
     except:
         server = ctx.message.guild
         voice_channel = server.voice_client
         voice_channel.stop()
-    vc.play(discord.FFmpegPCMAudio(executable="bin\\ffmpeg.exe", source=url, **FFMPEG_OPTIONS))
-    await текст(ctx, ' '.join(arg))
+    while qe:
+        th1 = Thread(target=wait, args=[ctx, qe[0], tm])
+        th1.start()
+        del qe[0]
 
 
 @client.command()
@@ -126,5 +149,17 @@ async def resume(ctx):
 async def leave(ctx):
     voice_client = ctx.message.guild.voice_client
     await voice_client.disconnect()
+
+
+@client.command(pass_context=True)
+async def queue(ctx, *arg):
+    global zero
+    src = ' '.join(arg)
+    await ctx.send('добавлено')
+    print(default_timer() - zero)
+    await play(ctx, src, end=True, tm=default_timer() - zero)
+
+
+
 
 client.run(TOKEN)
