@@ -14,35 +14,40 @@ vc = None
 nxt = False
 pl = {}
 qe = []
+in_playlist = True
 YDL_OPTIONS = {'format': 'worstaudio/best', 'noplaylist': 'False', 'simulate': 'True',
                'preferredquality': '192', 'preferredcodec': 'mp3', 'key': 'FFmpegExtractAudio'}
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 client = commands.Bot(command_prefix='GG ')
 
 
-def wait(ctx, lst):
-    global vc, nxt
-    qdl = False
-    if lst == qe:
-        qdl = True
-    while lst:
+def wait(ctx, pllst=False):
+    global vc, nxt, qe, in_playlist
+    def play_plsst(src):
+        global nxt
         vc.stop()
-        src = ' '.join(lst[0]) if qdl else lst[0]
+        print(src)
         with YoutubeDL(YDL_OPTIONS) as ydl:
             info = ydl.extract_info(f"ytsearch:{src}", download=False)['entries'][0]
         url = info['formats'][0]['url']
         lenght = info['duration']
         vc.play(discord.FFmpegPCMAudio(executable="bin\\ffmpeg.exe", source=url, **FFMPEG_OPTIONS))
         #insert_blob(src, discord.FFmpegPCMAudio(executable="bin\\ffmpeg.exe", source=url, **FFMPEG_OPTIONS).read())
-        del lst[0]
         for i in range(int(lenght) + 1):
             if nxt:
                 nxt = False
                 print(1)
                 break
             sleep(1)
-    if qdl:
-        qe.clear()
+    if not in_playlist:
+        while qe:
+            play_plsst(qe[0])
+            del qe[0]
+    else:
+        for elem in pllst:
+            play_plsst(elem)
+        in_playlist = False
+
 
 
 @client.command()
@@ -111,12 +116,14 @@ async def брось_кубик(ctx, *args):
 
 @client.command(pass_context=True)
 async def play(ctx, *arg):
-    global vc, qe
+    global vc, qe, in_playlist
     plst = False
-    if 'list:' in arg[0]:
+    if arg and 'list:' in arg[0]:
+        in_playlist = True
         plst = pl[arg[1]]
         print(plst)
     elif arg:
+        in_playlist = False
         qe.insert(0, arg)
     try:
         vc = await ctx.message.author.voice.channel.connect()
@@ -126,8 +133,8 @@ async def play(ctx, *arg):
             return None
         await stop(ctx)
     await ctx.send('включаю...')
-    print(plst.copy())
-    th1 = Thread(target=wait, args=[ctx, plst.copy() if plst else qe])
+    print(qe)
+    th1 = Thread(target=wait, args=[ctx, plst if in_playlist else False])
     th1.start()
 
 
@@ -179,7 +186,7 @@ async def queue(ctx, *arg):
     if arg in qe:
         await ctx.send('уже добавлено')
         return None
-    qe.append(arg)
+    qe.append(' '.join(arg))
     await ctx.send('добавлено')
 
 
@@ -187,7 +194,7 @@ async def queue(ctx, *arg):
 async def next(ctx):
     global nxt
     nxt = True
-    if qe:
+    if (qe and not in_playlist) or in_playlist:
         await ctx.send('переключаю..')
     else:
         await ctx.send('ваш плейлист кончился')
