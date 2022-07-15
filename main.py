@@ -28,6 +28,7 @@ def wait(ctx):
     while qe:
         vc.stop()
         src = qe[0]
+        print(src)
         with YoutubeDL(YDL_OPTIONS) as ydl:
             info = ydl.extract_info(f"ytsearch:{src}", download=False)['entries'][0]
         url = info['formats'][0]['url']
@@ -124,7 +125,7 @@ async def play(ctx, *arg):
         print(qe)
     elif arg:
         print(1)
-        qe.insert(0, arg)
+        qe.insert(0, ' '.join(arg))
     try:
         print(2)
         vc = await ctx.message.author.voice.channel.connect()
@@ -205,7 +206,7 @@ async def queue(ctx, *arg):
 async def next(ctx):
     global nxt
     nxt = True
-    if qe:
+    if len(qe) >= 2:
         await ctx.send('переключаю..')
     else:
         await ctx.send('ваш плейлист кончился')
