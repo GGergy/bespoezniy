@@ -8,46 +8,40 @@ from discord.ext import commands
 from config import TOKEN
 from threading import Thread
 from youtube_dl import YoutubeDL
-from sqlaver import insert_blob, read_blob_data
+
 
 vc = None
 nxt = False
-pl = {}
+with open("playlists.json", "r") as file:
+    pl = json.load(file)
+    print(pl)
 qe = []
-in_playlist = True
 YDL_OPTIONS = {'format': 'worstaudio/best', 'noplaylist': 'False', 'simulate': 'True',
                'preferredquality': '192', 'preferredcodec': 'mp3', 'key': 'FFmpegExtractAudio'}
 FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 client = commands.Bot(command_prefix='GG ')
 
 
-def wait(ctx, pllst=False):
-    global vc, nxt, qe, in_playlist
-    def play_plsst(src):
-        global nxt
+def wait(ctx):
+    global vc, nxt, qe
+    print(qe)
+    while qe:
         vc.stop()
-        print(src)
+        src = qe[0]
         with YoutubeDL(YDL_OPTIONS) as ydl:
             info = ydl.extract_info(f"ytsearch:{src}", download=False)['entries'][0]
         url = info['formats'][0]['url']
         lenght = info['duration']
         vc.play(discord.FFmpegPCMAudio(executable="bin\\ffmpeg.exe", source=url, **FFMPEG_OPTIONS))
-        #insert_blob(src, discord.FFmpegPCMAudio(executable="bin\\ffmpeg.exe", source=url, **FFMPEG_OPTIONS).read())
+        print(lenght)
         for i in range(int(lenght) + 1):
+            print(i)
             if nxt:
+                print('wqww')
                 nxt = False
-                print(1)
                 break
             sleep(1)
-    if not in_playlist:
-        while qe:
-            play_plsst(qe[0])
-            del qe[0]
-    else:
-        for elem in pllst:
-            play_plsst(elem)
-        in_playlist = False
-
+        del qe[0]
 
 
 @client.command()
@@ -116,34 +110,44 @@ async def брось_кубик(ctx, *args):
 
 @client.command(pass_context=True)
 async def play(ctx, *arg):
-    global vc, qe, in_playlist
-    plst = False
+    global vc, qe
     if arg and 'list:' in arg[0]:
-        in_playlist = True
-        plst = pl[arg[1]]
-        print(plst)
+        if any([1 if i in qe else 0 for i in pl[arg[1]]]):
+            await ctx.send('плейлист уже в очереди')
+            return None
+        try:
+            plst = pl[arg[1]]
+            #print(plst)
+        except:
+            await ctx.send(f"нет плейлиста с таким именем")
+            return None
+        qe = plst + qe
+        print(qe)
     elif arg:
-        in_playlist = False
+        print(1)
         qe.insert(0, arg)
     try:
+        print(2)
         vc = await ctx.message.author.voice.channel.connect()
     except:
         if not vc:
             await ctx.send('вы не в голосовом канале')
             return None
-        await stop(ctx)
+        await stop(ctx, clear=False)
     await ctx.send('включаю...')
-    print(qe)
-    th1 = Thread(target=wait, args=[ctx, plst if in_playlist else False])
+    print(qe, 'fdsjj')
+    th1 = Thread(target=wait, args=[ctx])
     th1.start()
 
 
 @client.command()
-async def stop(ctx):
+async def stop(ctx, clear=True):
     try:
         server = ctx.message.guild
         voice_channel = server.voice_client
         voice_channel.stop()
+        if clear:
+            qe.clear()
     except:
         await ctx.send('музыка сейчас не играет, воспользуйтесь командой GG play')
 
@@ -183,10 +187,20 @@ async def leave(ctx):
 @client.command(pass_context=True)
 async def queue(ctx, *arg):
     global qe
-    if arg in qe:
-        await ctx.send('уже добавлено')
-        return None
-    qe.append(' '.join(arg))
+    if arg and 'list:' in arg[0]:
+        try:
+            if all([1 if i in qe else 0 for i in pl[arg[1]]]):
+                await ctx.send('плейлист уже в очереди')
+                return None
+            qe.extend(pl[arg[1]])
+        except:
+            await ctx.send(f"нет плейлиста с таким именем")
+            return None
+    else:
+        if arg in qe:
+            await ctx.send('уже добавлено')
+            return None
+        qe.append(' '.join(arg))
     await ctx.send('добавлено')
 
 
@@ -194,7 +208,7 @@ async def queue(ctx, *arg):
 async def next(ctx):
     global nxt
     nxt = True
-    if (qe and not in_playlist) or in_playlist:
+    if qe:
         await ctx.send('переключаю..')
     else:
         await ctx.send('ваш плейлист кончился')
@@ -203,7 +217,7 @@ async def next(ctx):
 
 @client.command()
 async def commands(ctx):
-    txt = 'GG queue {название песни} - добавляет песню в конец очереди\nGG play {название}/{ничего} добавляет песню в начало очереди и воспроизводит ее\nGG text {название} - выводит текст песни по названию\nGG next - переключает очередь на следующую песню\nGG pause - пауза\nGG resume - снятие с паузы\nGG leave - выход из голосового канала'
+    txt = 'GG queue {название песни} - добавляет песню в конец очереди\nGG play {название/list: {плейлист}}/{ничего} добавляет песню/плейлист в начало очереди и воспроизводит ее\nGG text {название} - выводит текст песни по названию\nGG next - переключает очередь на следующую песню\nGG pause - пауза\nGG resume - снятие с паузы\nGG leave - выход из голосового канала\nGG create_playlist {название} {песни через запятую и пробел} - создает плейлист с выбранными песнями\nGG add_to_list {название} {песни через запятую и пробел} - добавляет выбранные песни в конец выбранного плейлиста\nGG rewiew {название плейлиста/ничего} - обзор вашей текущей очереди/плейлиста'
     embed = discord.Embed(title=f"комманды этого бота:", url="https://realdrewdata.medium.com/", description=txt, color=0xA35DE0)
     await ctx.send(embed=embed)
 
@@ -212,10 +226,42 @@ async def commands(ctx):
 async def create_playlist(ctx, *arg):
     name = arg[0]
     pl[name] = ' '.join(arg[1:]).split(', ')
-    print(pl)
+    with open("playlists.json", "w") as write_file:
+        json.dump(pl, write_file)
     await ctx.send('плейлист создан')
 
 
+@client.command(pass_context=True)
+async def add_to_list(ctx, *arg):
+    try:
+        e = ' '.join(arg[1:]).split(', ')
+        if all([1 if i in pl[arg[0]] else 0 for i in e]):
+            qe.clear()
+        pl[arg[0]].extend(e)
+        with open("playlists.json", "w") as write_file:
+            json.dump(pl, write_file)
+        print(pl)
+        await ctx.send('добавлено в плейлист')
+    except:
+        await ctx.send(f"нет плейлиста с таким именем")
+
+
+@client.command(pass_cotext=True)
+async def rewiew(ctx, *arg):
+    global qe
+    if arg:
+        lname = ' '.join(arg)
+        try:
+            txt = '\n'.join(pl[lname])
+        except:
+            await ctx.send("нет плейлиста с таким именем")
+    else:
+        if not qe:
+            await ctx.send("вы еще не добавили элементов в очередь")
+            return None
+        txt = '\n'.join(qe)
+    embed = discord.Embed(title=f"плейлист {lname}" if arg else f"ваша текущая очередь:", url="https://realdrewdata.medium.com/", description=txt, color=0xA35DE0)
+    await ctx.send(embed=embed)
 
 
 client.run(TOKEN)
