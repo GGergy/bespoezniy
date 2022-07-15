@@ -112,9 +112,8 @@ async def брось_кубик(ctx, *args):
 async def play(ctx, *arg):
     global vc, qe
     if arg and 'list:' in arg[0]:
-        if any([1 if i in qe else 0 for i in pl[arg[1]]]):
-            await ctx.send('плейлист уже в очереди')
-            return None
+        if all([1 if i in qe else 0 for i in pl[arg[1]]]):
+            qe.clear()
         try:
             plst = pl[arg[1]]
             #print(plst)
@@ -152,7 +151,6 @@ async def stop(ctx, clear=True):
         await ctx.send('музыка сейчас не играет, воспользуйтесь командой GG play')
 
 
-
 @client.command()
 async def pause(ctx):
     try:
@@ -161,7 +159,6 @@ async def pause(ctx):
         voice_channel.pause()
     except:
         await ctx.send('музыка сейчас не играет, воспользуйтесь командой GG play')
-
 
 
 @client.command()
@@ -217,7 +214,7 @@ async def next(ctx):
 
 @client.command()
 async def commands(ctx):
-    txt = 'GG queue {название песни} - добавляет песню в конец очереди\nGG play {название/list: {плейлист}}/{ничего} добавляет песню/плейлист в начало очереди и воспроизводит ее\nGG text {название} - выводит текст песни по названию\nGG next - переключает очередь на следующую песню\nGG pause - пауза\nGG resume - снятие с паузы\nGG leave - выход из голосового канала\nGG create_playlist {название} {песни через запятую и пробел} - создает плейлист с выбранными песнями\nGG add_to_list {название} {песни через запятую и пробел} - добавляет выбранные песни в конец выбранного плейлиста\nGG rewiew {название плейлиста/ничего} - обзор вашей текущей очереди/плейлиста'
+    txt = 'GG queue {название песни} - добавляет песню в конец очереди\nGG play {название/list: {плейлист}}/{ничего} добавляет песню/плейлист в начало очереди и воспроизводит ее\nGG text {название} - выводит текст песни по названию\nGG next - переключает очередь на следующую песню\nGG pause - пауза\nGG resume - снятие с паузы\nGG leave - выход из голосового канала\nGG create_playlist {название} {песни через запятую и пробел} - создает плейлист с выбранными песнями\nGG add_to_list {название} {песни через запятую и пробел} - добавляет выбранные песни в конец выбранного плейлиста\nGG review {название плейлиста/ничего} - обзор вашей текущей очереди/плейлиста'
     embed = discord.Embed(title=f"комманды этого бота:", url="https://realdrewdata.medium.com/", description=txt, color=0xA35DE0)
     await ctx.send(embed=embed)
 
@@ -237,7 +234,10 @@ async def add_to_list(ctx, *arg):
         e = ' '.join(arg[1:]).split(', ')
         if all([1 if i in pl[arg[0]] else 0 for i in e]):
             qe.clear()
-        pl[arg[0]].extend(e)
+        for elem in e:
+            if any([1 if i in qe else 0 for i in pl[arg[0]]]):
+                qe.insert(qe.index(pl[arg[0]][-1]), elem)
+            pl[arg[0]].append(elem)
         with open("playlists.json", "w") as write_file:
             json.dump(pl, write_file)
         print(pl)
@@ -247,14 +247,19 @@ async def add_to_list(ctx, *arg):
 
 
 @client.command(pass_cotext=True)
-async def rewiew(ctx, *arg):
+async def review(ctx, *arg):
     global qe
-    if arg:
+    if arg and arg[0] != 'now':
         lname = ' '.join(arg)
         try:
             txt = '\n'.join(pl[lname])
         except:
             await ctx.send("нет плейлиста с таким именем")
+    elif arg and arg[0] == "now":
+        txt = f"{qe[0]}" if qe else "ничего не играет, воспользуйтесь GG play"
+        embed = discord.Embed(title=f"сейчас играет:", url="https://realdrewdata.medium.com/", description=txt, color=0xA35DE0)
+        await ctx.send(embed=embed)
+
     else:
         if not qe:
             await ctx.send("вы еще не добавили элементов в очередь")
